@@ -1,0 +1,7 @@
+.github/CONTRIBUTING.md
+# Contributing (FR/EN)
+
+- Bilingual comments required
+- Small PRs, Conventional Commits
+- Tests for public API
+- Run: `scripts/lint-all.sh` before PR
