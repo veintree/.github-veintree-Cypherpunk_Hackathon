@@ -5,7 +5,9 @@ Stay tuned !
 
 .veintree-cypherpunk-hackathon/
 ├─ README.md
+
 ├─ LICENSE
+
 ├─ docs/
 │  ├─ ARCHITECTURE.md
 │  ├─ STYLE_GUIDE.md
