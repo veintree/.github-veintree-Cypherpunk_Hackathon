@@ -1,0 +1,17 @@
+unzip veintree-cypherpunk-hackathon-e2e-multiuser.zip
+cd veintree-cypherpunk-hackathon
+
+# 1) Déployer le programme (devnet)
+./scripts/anchor-keys.sh
+./scripts/anchor-deploy-devnet.sh
+# Si l'ID change, mets-le dans sdk/ts/src/veintree-sdk.ts (PROGRAM_ID)
+
+# 2) Installer & builder le SDK
+cd sdk/ts && npm ci && npm run build
+
+# 3) Lancer l'app
+cd ../../app && npm ci && npm run dev
+# Ouvre http://localhost:3000 — connecte Phantom (devnet)
+# - Register Proof (écrit le hash SHA3-256 dans ton PDA)
+# - Verify Proof (compare le hash)
+# - Sign Challenge (signature Ed25519 + vérif côté client)
