@@ -1,0 +1,12 @@
+# Construire l’image de dev
+docker compose build veintree-dev
+
+# Ouvrir un shell dans le conteneur
+docker compose run --rm veintree-dev bash
+
+# Dans le conteneur :
+solana --version && anchor --version && node -v && cargo -V
+./scripts/anchor-keys.sh
+./scripts/anchor-deploy-devnet.sh
+cd sdk/ts && npm run build
+cd ../../app && npm run dev   # → http://localhost:3000
