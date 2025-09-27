@@ -1,0 +1,15 @@
+unzip veintree-cypherpunk-hackathon-custom.zip
+cd veintree-cypherpunk-hackathon
+
+# Node (SDK + App)
+cd sdk/ts && npm ci && cd ../../app && npm ci
+
+# Lancer le client Next.js
+npm run dev
+
+# Revenir à la racine, init Git et push
+cd ..
+git init && git add . && git commit -m "chore: init custom skeleton"
+git branch -M main
+git remote add origin https://github.com/veintree/.github-veintree-Cypherpunk_Hackathon.git
+git push -u origin main
