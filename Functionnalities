@@ -1,0 +1,82 @@
+📋 Veintree – Fonctionnalités nécessaires
+1. Fondations techniques
+
+Programme Solana (Rust/Anchor)
+
+Instruction register_proof: écrire une preuve d’identité (hash) on-chain
+
+Instruction verify_proof: vérifier l’existence/intégrité d’une preuve
+
+Gestion basique de comptes d’état (hash de preuve + métadonnées)
+
+Support multi-utilisateurs (PDAs par user)
+
+SDK (Rust & TypeScript)
+
+Fonctions de hash → toProofHash(input)
+
+Fonctions pour construire/encoder les transactions
+
+Wrappers simples pour register_proof et verify_proof
+
+App (Next.js)
+
+Page “Login/Proof” : bouton → envoie une preuve
+
+Page “Verify” : check que la preuve est bien enregistrée
+
+Demo bilingue (FR/EN)
+
+2. Authentification biométrique (mock pour hackathon)
+
+Simulation d’un scan de veines (image → hash aléatoire ou déterministe)
+
+Détection de liveness simplifiée (ex. timestamp + random challenge)
+
+Encapsulation du résultat en preuve cryptographique
+
+3. Sécurité et cryptographie
+
+Hashing fort (SHA3/Blake2 ou équivalent Solana-friendly)
+
+Signatures ECDSA/Ed25519 (natives Solana)
+
+Mock d’extension post-quantum (documentée, pas encore implémentée)
+
+Vérification que aucune donnée biométrique brute n’est stockée → seulement un hash + preuve
+
+4. Intégration blockchain
+
+Déploiement sur localnet et devnet
+
+Scripts d’initialisation des comptes (wallet, airdrop)
+
+Test end-to-end :
+
+User → SDK → Hash preuve
+
+Transaction → Programme Solana → Écriture on-chain
+
+Vérification on-chain
+
+5. Expérience utilisateur
+
+Interface simple :
+
+“Enregistrer une preuve” (simulateur biométrique)
+
+“Vérifier une preuve” (statut on-chain)
+
+Messages bilingues FR/EN
+
+Intégration d’un QR code ou d’une clé partagée pour usage cross-device
+
+6. Roadmap post-hackathon
+
+Ajout d’un dongle FPGA réel (interface hardware)
+
+Implémentation de preuve de liveness avancée
+
+Intégration Zero-Knowledge Proofs (ex. zk-SNARK sur Solana)
+
+Cas d’usage régulés : EUDI Wallet, santé, essais cliniques
