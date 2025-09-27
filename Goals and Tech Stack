@@ -1,0 +1,40 @@
+# Veintree – Cypherpunk Hackathon (Solana / Colosseum)
+
+**FR** — Veintree construit une authentification biocryptographique éthique, sans base biométrique, résiliente post-quantum.  
+**EN** — Veintree builds ethical biocryptographic authentication: database-free, privacy-preserving, post-quantum resilient.
+
+---
+
+## 🎯 Goals / Objectifs
+
+**FR** — Pendant le hackathon Colosseum, nous livrons un POC sur Solana :  
+- Programme on-chain (Rust/Anchor) pour preuves d’identité non-répudiables  
+- SDK TS/Rust et client web minimal  
+- Flux de liveness + signature hardware-ready (mock pour le hackathon)
+
+**EN** — For the Colosseum hackathon, we ship a Solana POC:  
+- On-chain program (Rust/Anchor) for non-repudiable identity proofs  
+- TS/Rust SDK and minimal web client  
+- Liveness + hardware-ready signing (mocked for the hackathon)
+
+---
+
+## 🧱 Tech Stack
+
+- **Solana** + **Anchor** (Rust)
+- **TypeScript** SDK + **Next.js** client
+- Tests: Anchor mocha / Rust + Vitest
+- CI: GitHub Actions (lint, build, test)
+
+---
+
+## 🗣️ Bilingual Comments / Commentaires bilingues
+
+**FR** — Tous les fichiers doivent contenir des **commentaires FR & EN** pour les fonctions, modules, structures publiques et étapes non triviales.  
+**EN** — All files must include **FR & EN comments** for functions, public modules/structs, and non-trivial steps.
+
+> Format suggéré / Suggested format:
+```rust
+/// FR: Vérifie la preuve de liveness.
+/// EN: Verifies liveness proof.
+pub fn verify_liveness(...) -> Result<()> { ... }
