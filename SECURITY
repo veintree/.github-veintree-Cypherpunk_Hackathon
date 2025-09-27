@@ -1,1 +1,27 @@
 .github/SECURITY.md
+
+# 🔐 Security Policy — Veintree Hackathon
+
+## Supported Versions
+This project is in **hackathon prototype** stage.  
+We support only the `main` branch during the event.
+
+## Reporting a Vulnerability
+If you discover a vulnerability:
+
+1. **Do not** open a public GitHub Issue.
+2. Send an email to: **security@veintree.org**  
+   Optionally encrypt your message with our PGP key below.
+3. Include:
+   - A clear description of the issue
+   - Steps to reproduce
+   - Potential impact
+   - Suggested fix (if any)
+
+We will acknowledge receipt within **48 hours**, and provide an initial assessment or timeline within **7 days**.
+
+## Responsible Disclosure
+- Please allow us adequate time to patch before public disclosure.
+- Coordinated disclosure is welcome — we will credit you unless you prefer anonymity.
+
+## PGP Public Key
