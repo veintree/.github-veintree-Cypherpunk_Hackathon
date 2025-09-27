@@ -1,0 +1,14 @@
+unzip veintree-cypherpunk-hackathon-e2e-index-tests.zip
+cd veintree-cypherpunk-hackathon
+
+# Déploiement programme (devnet)
+./scripts/anchor-keys.sh
+./scripts/anchor-deploy-devnet.sh
+# Si l'ID change, mets-le dans: sdk/ts/src/veintree-sdk.ts (PROGRAM_ID)
+
+# SDK: build + tests
+cd sdk/ts && npm ci && npm run build && npm test
+
+# App: démarrage
+cd ../../app && npm ci && npm run dev
+# http://localhost:3000 — Connect Phantom (devnet)
