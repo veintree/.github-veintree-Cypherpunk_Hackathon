@@ -1,0 +1,44 @@
+Quickstart
+Prérequis / Prereqs
+
+Rust stable, Node 18+, Yarn/PNPM, Anchor, Solana CLI
+
+Devnet
+solana config set --url https://api.devnet.solana.com
+anchor build && anchor deploy
+yarn --cwd sdk/ts install && yarn --cwd app install
+
+Tests
+anchor test
+yarn --cwd sdk/ts test
+
+🔀 Git & PR Process
+
+Branches: feat/*, fix/*, chore/*
+
+Commits: Conventional Commits (feat:, fix:, …)
+
+PR = petits lots + checklist + tests
+
+Reviews: 1 LGTM minimum
+
+🗂️ Issues & Features
+
+Labels: good-first-issue, hackathon, bounty, priority
+
+Ouvrir une issue avec contexte, user story, critères d’acceptation (FR/EN)
+
+🔒 Security / Sécurité
+
+Veuillez signaler discrètement via SECURITY.md.
+Please report privately via SECURITY.md.
+
+📄 License
+
+SPDX-License-Identifier: Apache-2.0 (modifiable selon besoin)
+
+👥 Contact
+
+Core: @maintainers
+
+Discord: #veintree-hackathon
