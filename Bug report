@@ -1,0 +1,19 @@
+github/ISSUE_TEMPLATE/bug_report.md
+---
+name: Bug report
+about: Report a bug / Signaler un bug
+labels: bug
+---
+
+**FR — Comportement constaté / attendu**
+…
+
+**EN — Observed / Expected**
+…
+
+**Repro Steps / Étapes**
+1.
+2.
+
+**Logs / Versions**
+…
