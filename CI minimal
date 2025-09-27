@@ -1,0 +1,30 @@
+CI minimal (Rust + TS)
+
+.github/workflows/ci.yml
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --workspace --all-targets
+      - name: Test
+        run: cargo test --workspace
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 18 }
+      - name: SDK TS
+        run: |
+          cd sdk/ts && npm ci && npm run build && npm test --if-present
+      - name: App
+        run: |
+          cd app && npm ci && npm run build && npm test --if-present
