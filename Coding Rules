@@ -1,0 +1,26 @@
+Coding Rules / Règles de dev (concises)
+
+Inspiré par les principes “écrire petit, clair, testable”.
+FR
+
+Fonctions courtes, une responsabilité, noms explicites
+
+Types stricts, erreurs précises (thiserror)
+
+Pas de magie: logs/commentaires là où la lecture serait difficile
+
+Tests unitaires pour chaque instruction publique
+
+Pas de code mort / pas d’optimisation prématurée
+
+EN
+
+Small functions, single responsibility, explicit names
+
+Strong typing, precise errors (thiserror)
+
+No hidden magic: add logs/comments where needed
+
+Unit tests for every public instruction
+
+No dead code / no premature optimization
