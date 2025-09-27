@@ -1,0 +1,15 @@
+unzip veintree-cypherpunk-hackathon-pro2.zip
+cd veintree-cypherpunk-hackathon
+
+# Rends le script exécutable
+chmod +x scripts/create-issues.sh
+
+# Connecte-toi à GitHub CLI si besoin
+gh auth login
+
+# (Optionnel) définir ton Project Kanban
+export OWNER="veintree"           # ton org ou user
+export PROJECT_NUMBER="1"         # numéro du Project (Settings -> Projects)
+
+# Lancer la création de toutes les issues
+./scripts/create-issues.sh
