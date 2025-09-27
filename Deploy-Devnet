@@ -1,0 +1,13 @@
+# Déploiement devnet (clé + deploy)
+make devnet
+
+# Lancer l'app en dev
+make app  # http://localhost:3000
+
+# Peupler des preuves de démo
+make seed
+
+# Production Docker
+make build-prod
+make run-prod   # → http://localhost:3000
+make stop
