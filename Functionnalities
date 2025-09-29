@@ -27,9 +27,11 @@ Page “Verify” : check que la preuve est bien enregistrée
 
 Demo bilingue (FR/EN)
 
-2. Authentification biométrique (mock pour hackathon)
+2. Authentification biocryptographique (mock ou résultat de scan pour hackathon)
 
-Simulation d’un scan de veines (image → hash aléatoire ou déterministe)
+Simulation ou charge d’un scan de veines (image → hash aléatoire ou déterministe)
+
+Gesture recognition 
 
 Détection de liveness simplifiée (ex. timestamp + random challenge)
 
