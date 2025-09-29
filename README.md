@@ -3,6 +3,50 @@ Repository for the Solana Cypherpunk Hackathon.
 We are preparing the repository from our private source that we opensource.
 Stay tuned !
 
+FR — Objectif
+
+Réaliser un MVP démontrant l’usage complet de la biocryptographie pour gérer des cryptomonnaies sans exposer ni connaître la seed phrase : du scan biométrique mobile à la création et stockage d’un token d’authentification côté scanner, en passant par la sécurisation des échanges (post-quantum) entre smartphone, scanner et services blockchain, et la mise en place des composants front-end et microservices nécessaires au démonstrateur.
+
+FR — Objectif (détaillé)
+
+Pendant le hackathon, Veintree vise à livrer un prototype fonctionnel qui couvre l’intégralité du flux utilisateur et infrastructure :
+
+intégration d’un scanner biométrique mobile (avec interactions gestuelles) et capture côté smartphone ;
+
+génération locale d’un token d’authentification dans le scanner selon le modèle « serrure/clé » de la biocryptographie, sans stocker de données biométriques brutes ni seed phrases ;
+
+chiffrement post-quantique des échanges entre scanner et serveurs blockchain ;
+
+sécurisation des messages et des transactions blockchain via le token d’authentification ;
+
+développement d’un front-end mobile minimal pour la démonstration (enregistrement, authentification, signature d’opérations) ;
+
+déploiement de microservices Docker côté serveur pour le traitement et le déchiffrement autorisé des messages.
+L’objectif est de prouver techniquement et UX-ment qu’une authentification éthique, privée et résistante au quantique peut remplacer l’usage direct de seed phrases pour les interactions crypto.
+
+EN — Objective 
+
+Deliver an MVP demonstrating end-to-end biocryptographic handling of cryptocurrencies without exposing or knowing the seed phrase: from mobile scanner usage to generation of an on-device authentication token, with post-quantum secured communications between smartphone, scanner and blockchain services, plus frontend and microservice components for the demo.
+
+EN — Objective (detailed)
+
+During the hackathon, Veintree intends to produce a working prototype that implements the full user and infrastructure flow:
+
+integrate a biometric scanner with mobile interaction (including hand gestures) and capture on the smartphone;
+
+generate and store an authentication token locally on the scanner following the biocryptographic “lock-and-key” process, ensuring no biometric raw data or seed phrases are retained;
+
+secure scanner↔server communications with post-quantum encryption;
+
+use the authentication token to secure messages and blockchain transactions;
+
+build a minimal mobile frontend for recording, authenticating and signing operations;
+
+deploy Dockerized microservices on the server side for authorized decryption and processing.
+The goal is to demonstrate technically and from a UX perspective that ethical, privacy-preserving, post-quantum-resistant biocryptography can supplant direct seed-phrase handling for crypto operations.
+
+
+
 .veintree-cypherpunk-hackathon/
 
 ├─ README.md
