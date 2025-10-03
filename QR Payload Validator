@@ -1,0 +1,112 @@
+
+// qr-validator.ts
+// FR: Validateur de QR Veintree (local, sans upload). EN: Local QR payload validator.
+
+// Optional: npm i tweetnacl @noble/hashes (if you want signature/hash checks)
+import nacl from "tweetnacl";
+import { sha3_256 } from "@noble/hashes/sha3";
+
+/** Supported actions / Actions supportées */
+const ALLOWED_ACTIONS = new Set(["auth", "sign", "tx"]);
+/** Max length guard / Garde-fou taille */
+const MAX_URL_LEN = 2048;
+/** Default TTL (ms) if no 'exp' is provided; prefer requiring 'exp' */
+const DEFAULT_TTL_MS = 60_000;
+
+/** Result type */
+export type QrPayload =
+  | { action: "auth"; token: string; exp?: number; pk?: string; sig?: string; raw: URL }
+  | { action: "sign"; token: string; exp?: number; pk: string; sig: string; raw: URL }
+  | { action: "tx";   token: string; exp?: number; pk: string; sig: string; raw: URL };
+
+/** Base64url helpers (no padding) */
+function isBase64Url(s: string): boolean {
+  return /^[A-Za-z0-9\-_]+$/.test(s);
+}
+function b64urlToU8(b64url: string): Uint8Array {
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64url.length + 3) % 4);
+  const bin = typeof atob !== "undefined" ? atob(b64) : Buffer.from(b64, "base64").toString("binary");
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Sha3-256 for message canonicalization (optional but recommended) */
+function hash(data: Uint8Array): Uint8Array {
+  return new Uint8Array(sha3_256(data));
+}
+
+/** Build the canonical message that was signed (strict & stable) */
+function buildCanonicalMessage(url: URL): Uint8Array {
+  // Only include whitelisted fields to avoid signature confusion
+  const params = new URLSearchParams();
+  params.set("action", url.hostname);
+  if (url.searchParams.has("token")) params.set("token", url.searchParams.get("token")!);
+  if (url.searchParams.has("exp"))   params.set("exp", url.searchParams.get("exp")!);
+  // NOTE: do NOT include 'sig' itself in the signed message
+  const canonical = `veintree://${params.get("action")}?${params.toString()}`;
+  return new TextEncoder().encode(canonical);
+}
+
+/**
+ * FR: Valide un QR Veintree (schéma, action, TTL, formats) + vérifie la signature si pk+sig présents.
+ * EN: Validate a Veintree QR (scheme, action, TTL, formats) + verify signature if pk+sig provided.
+ */
+export function isValidQrPayload(
+  input: string,
+  opts?: {
+    nowMs?: number;
+    requireExp?: boolean;
+    maxSkewMs?: number;      // clock skew tolerance, e.g., 30000
+    requireSignature?: boolean; // force pk+sig verification
+  }
+): { ok: true; data: QrPayload } | { ok: false; error: string } {
+  try {
+    if (!input || input.length > MAX_URL_LEN) return { ok: false, error: "invalid_length" };
+    const url = new URL(input);
+
+    // Scheme & action
+    if (url.protocol !== "veintree:") return { ok: false, error: "invalid_scheme" };
+    const action = url.hostname; // veintree://auth|sign|tx
+    if (!ALLOWED_ACTIONS.has(action)) return { ok: false, error: "invalid_action" };
+
+    // Required params
+    const token = url.searchParams.get("token") || "";
+    const expStr = url.searchParams.get("exp"); // epoch ms
+    const pk = url.searchParams.get("pk") || undefined;      // base58 or base64url? (we use base64url here)
+    const sig = url.searchParams.get("sig") || undefined;    // base64url
+
+    if (!token || !isBase64Url(token)) return { ok: false, error: "invalid_token" };
+
+    // Expiration / TTL
+    const now = opts?.nowMs ?? Date.now();
+    if (opts?.requireExp && !expStr) return { ok: false, error: "missing_exp" };
+    let expMs = expStr ? Number(expStr) : now + DEFAULT_TTL_MS;
+    if (!Number.isFinite(expMs)) return { ok: false, error: "invalid_exp" };
+    if (expMs + (opts?.maxSkewMs ?? 0) < now) return { ok: false, error: "expired" };
+
+    // Signature (optional unless required or action demands it)
+    const mustSign = opts?.requireSignature || action === "sign" || action === "tx";
+    if (mustSign) {
+      if (!pk || !sig) return { ok: false, error: "missing_signature" };
+      if (!isBase64Url(sig)) return { ok: false, error: "invalid_sig_format" };
+      if (!isBase64Url(pk)) return { ok: false, error: "invalid_pk_format" };
+
+      const message = buildCanonicalMessage(url);
+      const digest = hash(message);
+      const sigU8 = b64urlToU8(sig);
+      const pkU8 = b64urlToU8(pk);
+
+      const valid = nacl.sign.detached.verify(digest, sigU8, pkU8);
+      if (!valid) return { ok: false, error: "bad_signature" };
+    }
+
+    // Shape result
+    const common = { token, exp: expStr ? expMs : undefined, raw: url } as const;
+    if (action === "auth") return { ok: true, data: { action: "auth", ...common, pk, sig } };
+    if (action === "sign") return { ok: true, data: { action: "sign", ...common, pk: pk!, sig: sig! } };
+    return { ok: true, data: { action: "tx", ...common, pk: pk!, sig: sig! } };
+  } catch (e) {
+    return { ok: false, error: "parse_error" };
+  }
+}
