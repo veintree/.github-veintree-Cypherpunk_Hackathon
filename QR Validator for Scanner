@@ -1,0 +1,97 @@
+
+# Add QR validator and scanner component into the app, route, deps, and a small Vitest test
+import os, pathlib, textwrap, json, zipfile
+
+root = "/mnt/data/veintree-cypherpunk-hackathon"
+
+def write(path, content):
+    p = pathlib.Path(path); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content.strip()+"\n", encoding="utf-8")
+
+# 1) Add validator in app/src/lib
+validator_ts = r"""
+// app/src/lib/qr-validator.ts
+// FR: Validateur de QR Veintree (local). EN: Local QR payload validator.
+
+import nacl from "tweetnacl";
+import { sha3_256 } from "@noble/hashes/sha3";
+
+/** Supported actions */
+const ALLOWED_ACTIONS = new Set(["auth", "sign", "tx"]);
+/** Guards */
+const MAX_URL_LEN = 2048;
+const DEFAULT_TTL_MS = 60_000;
+
+export type QrPayload =
+  | { action: "auth"; token: string; exp?: number; pk?: string; sig?: string; raw: URL }
+  | { action: "sign"; token: string; exp?: number; pk: string; sig: string; raw: URL }
+  | { action: "tx";   token: string; exp?: number; pk: string; sig: string; raw: URL };
+
+function isBase64Url(s: string): boolean {
+  return /^[A-Za-z0-9\-_]+$/.test(s);
+}
+function b64urlToU8(b64url: string): Uint8Array {
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64url.length + 3) % 4);
+  const bin = typeof atob !== "undefined" ? atob(b64) : Buffer.from(b64, "base64").toString("binary");
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function hash(data: Uint8Array): Uint8Array {
+  return new Uint8Array(sha3_256(data));
+}
+function buildCanonicalMessage(url: URL): Uint8Array {
+  const params = new URLSearchParams();
+  params.set("action", url.hostname);
+  if (url.searchParams.has("token")) params.set("token", url.searchParams.get("token")!);
+  if (url.searchParams.has("exp"))   params.set("exp", url.searchParams.get("exp")!);
+  const canonical = `veintree://${params.get("action")}?${params.toString()}`;
+  return new TextEncoder().encode(canonical);
+}
+
+export function isValidQrPayload(
+  input: string,
+  opts?: {
+    nowMs?: number;
+    requireExp?: boolean;
+    maxSkewMs?: number;
+    requireSignature?: boolean;
+  }
+): { ok: true; data: QrPayload } | { ok: false; error: string } {
+  try {
+    if (!input || input.length > MAX_URL_LEN) return { ok: false, error: "invalid_length" };
+    const url = new URL(input);
+    if (url.protocol !== "veintree:") return { ok: false, error: "invalid_scheme" };
+    const action = url.hostname;
+    if (!ALLOWED_ACTIONS.has(action)) return { ok: false, error: "invalid_action" };
+
+    const token = url.searchParams.get("token") || "";
+    const expStr = url.searchParams.get("exp");
+    const pk = url.searchParams.get("pk") || undefined;
+    const sig = url.searchParams.get("sig") || undefined;
+    if (!token || !isBase64Url(token)) return { ok: false, error: "invalid_token" };
+
+    const now = opts?.nowMs ?? Date.now();
+    if (opts?.requireExp && !expStr) return { ok: false, error: "missing_exp" };
+    let expMs = expStr ? Number(expStr) : now + DEFAULT_TTL_MS;
+    if (!Number.isFinite(expMs)) return { ok: false, error: "invalid_exp" };
+    if (expMs + (opts?.maxSkewMs ?? 0) < now) return { ok: false, error: "expired" };
+
+    const mustSign = opts?.requireSignature || action === "sign" || action === "tx";
+    if (mustSign) {
+      if (!pk || !sig) return { ok: false, error: "missing_signature" };
+      if (!isBase64Url(sig)) return { ok: false, error: "invalid_sig_format" };
+      if (!isBase64Url(pk)) return { ok: false, error: "invalid_pk_format" };
+      const message = buildCanonicalMessage(url);
+      const digest = hash(message);
+      const sigU8 = b64urlToU8(sig);
+      const pkU8 = b64urlToU8(pk);
+      const valid = nacl.sign.detached.verify(digest, sigU8, pkU8);
+      if (!valid) return { ok: false, error: "bad_signature" };
+    }
+
+    const common = { token, exp: expStr ? expMs : undefined, raw: url } as const;
+    if (action === "auth") return { ok: true, data: { action: "auth", ...common, pk, sig } };
+    if (action === "sign") return { ok: true, data: { action: "sign", ...common, pk: pk!, sig: sig! } };
+    return { ok: true, data: { action: "tx", ...common, pk: pk!, sig: sig! } };
+  } catch {
+    return
