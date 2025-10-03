@@ -45,6 +45,23 @@ build a minimal mobile frontend for recording, authenticating and signing operat
 deploy Dockerized microservices on the server side for authorized decryption and processing.
 The goal is to demonstrate technically and from a UX perspective that ethical, privacy-preserving, post-quantum-resistant biocryptography can supplant direct seed-phrase handling for crypto operations.
 
+Lecture des QR codes / QR Code Scanning
+
+FR — Pourquoi ?
+Pour faciliter l’onboarding et les opérations offline/air-gapped, l’app peut lire des QR codes contenant des jetons d’authentification, des challenges de signature, ou des références de transactions.
+
+EN — Why?
+To streamline onboarding and offline/air-gapped flows, the app can scan QR codes carrying authentication tokens, signing challenges, or transaction references.
+
+Objectifs / Goals
+
+Lecture temps réel via caméra du DOngle
+
+Décodage local (pas d’envoi de l’image en backend)
+
+Détection et validation du format (token/challenge/URI)
+
+UX claire : autorisation caméra, état “scanning”, succès/erreur
 
 
 .veintree-cypherpunk-hackathon/
