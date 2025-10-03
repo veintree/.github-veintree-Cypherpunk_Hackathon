@@ -1,0 +1,59 @@
+
+
+cd app
+npm i @zxing/browser
+
+
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+
+export default function QrScanner() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [result, setResult] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [scanning, setScanning] = useState(false);
+
+  useEffect(() => {
+    const codeReader = new BrowserMultiFormatReader();
+    let stop: (() => void) | null = null;
+
+    async function start() {
+      try {
+        setScanning(true);
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        const deviceId = devices?.[0]?.deviceId;
+        if (!deviceId) throw new Error('No camera found');
+        const controls = await codeReader.decodeFromVideoDevice(
+          deviceId,
+          videoRef.current!,
+          (res, err) => {
+            if (res) {
+              setResult(res.getText());
+              setScanning(false);
+              controls.stop();
+            }
+            if (err && String(err).includes('NotFoundException')) return;
+            if (err && !String(err).includes('NotFoundException')) setError(String(err));
+          }
+        );
+        stop = () => controls.stop();
+      } catch (e: any) {
+        setError(e.message || 'Camera error');
+        setScanning(false);
+      }
+    }
+    start();
+    return () => { if (stop) stop(); };
+  }, []);
+
+  return (
+    <main style={{ padding: 24 }}>
+      <h1>QR Scanner</h1>
+      <video ref={videoRef} style={{ width: 320, height: 240, background: '#000' }} muted playsInline />
+      <p>Status: {scanning ? 'Scanning…' : result ? 'Done' : error ? 'Error' : 'Idle'}</p>
+      {result && <pre style={{ whiteSpace: 'pre-wrap' }}>{result}</pre>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+    </main>
+  );
+}
