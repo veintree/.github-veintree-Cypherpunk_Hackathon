@@ -1,0 +1,331 @@
+Notes importantes
+
+Handedness est fourni par MediaPipe (res.handednesses[0][0].categoryName → “Left”/“Right”).
+
+Les descripteurs de Fourier sont invariants à l’échelle et à la rotation (normalisation incluse).
+
+KNN est compact et interprétable ; tu peux enrichir la base app/public/gestures/**.json puis regénérer.
+
+Pour de vrais contours fermés, on peut calculer un convex hull ou un ordre de contour à partir des landmarks ; pour la démo, on utilise l’ordre des 21 landmarks.
+
+# Creating convex hull integration files and zipping them
+import os, pathlib, textwrap, zipfile
+
+root = "/mnt/data/veintree-cypherpunk-hackathon"
+os.makedirs(root, exist_ok=True)
+
+def write(path, content):
+    p = pathlib.Path(path); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content, encoding="utf-8")
+
+gesture_fd = """\
+// app/src/lib/gesture-fd.ts
+export type Point = { x: number; y: number };
+
+export function convexHull(pts: Point[]): Point[] {
+  const p = pts.slice().sort((a,b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  if (p.length <= 1) return p;
+  const cross = (o: Point, a: Point, b: Point) => (a.x - o.x)*(b.y - o.y) - (a.y - o.y)*(b.x - o.x);
+  const lower: Point[] = [];
+  for (const pt of p) {
+    while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], pt) <= 0) lower.pop();
+    lower.push(pt);
+  }
+  const upper: Point[] = [];
+  for (let i = p.length-1; i>=0; i--) {
+    const pt = p[i];
+    while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], pt) <= 0) upper.pop();
+    upper.push(pt);
+  }
+  upper.pop(); lower.pop();
+  return lower.concat(upper);
+}
+
+export function resamplePerimeter(poly: Point[], M = 128): Point[] {
+  if (!poly.length) return [];
+  const pts = poly.slice();
+  if (pts[0].x !== pts[pts.length-1].x || pts[0].y !== pts[pts.length-1].y) pts.push({ ...pts[0] });
+  const segLen: number[] = [];
+  let total = 0;
+  for (let i=0;i<pts.length-1;i++) {
+    const d = Math.hypot(pts[i+1].x-pts[i].x, pts[i+1].y-pts[i].y);
+    segLen.push(d); total += d;
+  }
+  const out: Point[] = [];
+  for (let k=0;k<M;k++) {
+    let target = (k*total)/(M);
+    let i=0;
+    while (i<segLen.length && target>segLen[i]) { target -= segLen[i]; i++; }
+    const t = segLen[i] ? target/segLen[i] : 0;
+    const a = pts[i], b = pts[i+1] || pts[i];
+    out.push({ x: a.x*(1-t)+b.x*t, y: a.y*(1-t)+b.y*t });
+  }
+  return out;
+}
+
+export function resampleContour(points: Point[], M = 128): Point[] {
+  const out: Point[] = [];
+  if (points.length === 0) return out;
+  for (let i = 0; i < M; i++) {
+    const t = (i * (points.length - 1)) / (M - 1);
+    const k = Math.floor(t), a = t - k;
+    const p = points[k], q = points[Math.min(k + 1, points.length - 1)];
+    out.push({ x: p.x * (1 - a) + q.x * a, y: p.y * (1 - a) + q.y * a });
+  }
+  return out;
+}
+
+function toComplexSeries(pts: Point[]): Float64Array {
+  const n = pts.length;
+  let cx = 0, cy = 0;
+  for (const p of pts) { cx += p.x; cy += p.y; }
+  cx /= n; cy /= n;
+  const z = new Float64Array(n * 2);
+  let maxr = 1e-9;
+  for (let i = 0; i < n; i++) {
+    const dx = pts[i].x - cx, dy = pts[i].y - cy;
+    z[2 * i] = dx; z[2 * i + 1] = dy;
+    const r = Math.hypot(dx, dy);
+    if (r > maxr) maxr = r;
+  }
+  for (let i = 0; i < n; i++) { z[2 * i] /= maxr; z[2 * i + 1] /= maxr; }
+  return z;
+}
+
+export function fftComplex(z: Float64Array): Float64Array {
+  const N = z.length / 2;
+  const out = new Float64Array(z);
+  for (let i = 0, j = 0; i < N; i++) {
+    if (i < j) {
+      const ir = 2 * i, jr = 2 * j;
+      [out[ir], out[jr]] = [out[jr], out[ir]];
+      [out[ir + 1], out[jr + 1]] = [out[jr + 1], out[ir + 1]];
+    }
+    let m = N >> 1;
+    while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+    j += m;
+  }
+  for (let len = 2; len <= N; len <<= 1) {
+    const ang = (-2 * Math.PI) / len;
+    const wlenr = Math.cos(ang), wleni = Math.sin(ang);
+    for (let i = 0; i < N; i += len) {
+      let wr = 1, wi = 0;
+      for (let j = 0; j < (len >> 1); j++) {
+        const uR = out[2 * (i + j)], uI = out[2 * (i + j) + 1];
+        const vR = out[2 * (i + j + (len >> 1))], vI = out[2 * (i + j + (len >> 1)) + 1];
+        const tR = wr * vR - wi * vI, tI = wr * vI + wi * vR;
+        out[2 * (i + j)] = uR + tR; out[2 * (i + j) + 1] = uI + tI;
+        out[2 * (i + j + (len >> 1))] = uR - tR; out[2 * (i + j + (len >> 1)) + 1] = uI - tI;
+        const nwr = wr * wlenr - wi * wleni;
+        wi = wr * wleni + wi * wlenr; wr = nwr;
+      }
+    }
+  }
+  return out;
+}
+
+export function fourierDescriptorsFromHull(points: Point[], M = 128, K = 16): number[] {
+  const hull = convexHull(points);
+  const res = resamplePerimeter(hull, M);
+  return fourierDescriptors(res, M, K);
+}
+
+export function fourierDescriptors(points: Point[], M = 128, K = 16): number[] {
+  const res = resampleContour(points, M);
+  const z = toComplexSeries(res);
+  const F = fftComplex(z);
+  const a1r = F[2 * 1], a1i = F[2 * 1 + 1];
+  const a1mag = Math.hypot(a1r, a1i) || 1;
+  const desc: number[] = [];
+  for (let k = 1; k <= K; k++) {
+    const ar = F[2 * k], ai = F[2 * k + 1];
+    desc.push(Math.hypot(ar, ai) / a1mag);
+  }
+  return desc;
+}
+
+export type LabeledFD = { label: string; fd: number[] };
+export function knnClassify(sample: number[], db: LabeledFD[], k = 3): { label: string; score: number } {
+  if (!db.length) return { label: '', score: 0 };
+  const dists = db.map(({ label, fd }) => ({
+    label,
+    d: Math.sqrt(fd.reduce((acc, v, i) => acc + (v - (sample[i] || 0)) ** 2, 0)),
+  })).sort((a, b) => a.d - b.d).slice(0, k);
+  const tally = new Map<string, number>();
+  dists.forEach(({ label, d }) => tally.set(label, (tally.get(label) || 0) + 1 / (d + 1e-6)));
+  let best = '', score = -1;
+  tally.forEach((s, l) => { if (s > score) { score = s; best = l; } });
+  return { label: best, score };
+}
+"""
+write(f"{root}/app/src/lib/gesture-fd.ts", gesture_fd)
+
+hand_demo = """\
+// app/src/components/HandGestureDemo.tsx
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { fourierDescriptorsFromHull, convexHull, Point, LabeledFD, knnClassify } from '../lib/gesture-fd';
+
+let HandLandmarker: any;
+let FilesetResolver: any;
+
+async function loadDetector() {
+  const vision = await import('@mediapipe/tasks-vision');
+  FilesetResolver = vision.FilesetResolver;
+  HandLandmarker = vision.HandLandmarker;
+  const fileset = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+  );
+  const landmarker = await HandLandmarker.createFromOptions(fileset, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+    },
+    runningMode: 'VIDEO',
+    numHands: 1
+  });
+  return landmarker;
+}
+
+function landmarksToPoints(landmarks: any[]): Point[] {
+  return landmarks.map((lm: any) => ({ x: lm.x, y: lm.y }));
+}
+
+export default function HandGestureDemo() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [status, setStatus] = useState('idle');
+  const [handed, setHanded] = useState<'left'|'right'|''>('');
+  const [gesture, setGesture] = useState<{ label: string; score: number } | null>(null);
+  const [db, setDb] = useState<LabeledFD[]>([]);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let raf = 0;
+    let detector: any = null;
+
+    async function start() {
+      try {
+        setStatus('loading');
+        try {
+          const resp = await fetch('/gestures-db.json');
+          if (resp.ok) setDb(await resp.json());
+        } catch {}
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        detector = await loadDetector();
+        setStatus('scanning');
+        loop();
+      } catch (e: any) {
+        setStatus('error: ' + (e.message || 'camera/landmarker error'));
+      }
+    }
+
+    async function loop() {
+      if (!videoRef.current || !detector) return;
+      const v = videoRef.current;
+      const nowInMs = performance.now();
+      const res = await detector.detectForVideo(v, nowInMs);
+      draw(res);
+      raf = requestAnimationFrame(loop);
+    }
+
+    function draw(res: any) {
+      const ctx = canvasRef.current?.getContext('2d');
+      const v = videoRef.current;
+      if (!ctx || !v) return;
+      canvasRef.current!.width = v.videoWidth;
+      canvasRef.current!.height = v.videoHeight;
+      ctx.drawImage(v, 0, 0, v.videoWidth, v.videoHeight);
+
+      if (!res || !res.landmarks || !res.landmarks[0]) { setGesture(null); setHanded(''); return; }
+      const lm = res.landmarks[0];
+      const handedness = res.handednesses?.[0]?.[0]?.categoryName || '';
+      const side = handedness.toLowerCase().includes('right') ? 'right' : handedness.toLowerCase().includes('left') ? 'left' : '';
+      setHanded(side as any);
+
+      // Draw landmarks
+      ctx.fillStyle = '#00ff88';
+      for (const p of lm) ctx.fillRect(p.x * v.videoWidth - 2, p.y * v.videoHeight - 2, 4, 4);
+
+      // Convex hull
+      const points = landmarksToPoints(lm);
+      const hull = convexHull(points);
+      if (hull.length >= 2) {
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(hull[0].x * v.videoWidth, hull[0].y * v.videoHeight);
+        for (let i=1;i<hull.length;i++) {
+          ctx.lineTo(hull[i].x * v.videoWidth, hull[i].y * v.videoHeight);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // FD on hull + KNN
+      const fd = fourierDescriptorsFromHull(points, 64, 12);
+      const result = db.length ? knnClassify(fd, db, 3) : { label: '', score: 0 };
+      setGesture(result);
+      if (result.label) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(10, 10, 300, 54);
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px system-ui';
+        ctx.fillText(`Hand: ${side || 'unknown'}`, 20, 32);
+        ctx.fillText(`Gesture: ${result.label} (${result.score.toFixed(2)})`, 20, 52);
+      }
+    }
+
+    start();
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
+  return (
+    <section style={{ display: 'grid', gap: 12 }}>
+      <div style={{ position: 'relative', width: 'min(640px, 100%)' }}>
+        <video ref={videoRef} style={{ width: '100%', borderRadius: 8 }} muted playsInline />
+        <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
+      </div>
+      <p>Status: {status}</p>
+      <p>Handedness: <b>{handed || '—'}</b></p>
+      <p>Gesture: <b>{gesture?.label || '—'}</b> {gesture ? `(${gesture.score.toFixed(2)})` : ''}</p>
+      <small>Now using convex hull + uniform-perimeter resampling for robust Fourier descriptors.</small>
+    </section>
+  );
+}
+"""
+write(f"{root}/app/src/components/HandGestureDemo.tsx", hand_demo)
+
+page_hand = """\
+// app/src/app/hand-gesture/page.tsx
+'use client';
+import dynamic from 'next/dynamic';
+const Demo = dynamic(() => import('../../components/HandGestureDemo'), { ssr: false });
+
+export default function HandGesturePage() {
+  return (
+    <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
+      <h1>Handedness & Gesture Classification (Fourier + KNN)</h1>
+      <p>Detect left/right hand and classify gestures locally in the browser.</p>
+      <Demo />
+    </main>
+  );
+}
+"""
+write(f"{root}/app/src/app/hand-gesture/page.tsx", page_hand)
+
+# Zip
+zip_path = "/mnt/data/veintree-cypherpunk-hackathon-gestures-hull.zip"
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    for folder, _, files in os.walk(root):
+        for fn in files:
+            full = os.path.join(folder, fn)
+            arc = os.path.relpath(full, "/mnt/data")
+            z.write(full, arc)
+
+print(zip_path)
