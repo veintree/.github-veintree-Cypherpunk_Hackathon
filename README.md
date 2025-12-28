@@ -74,10 +74,20 @@ The goal is to demonstrate technically and from a UX perspective that ethical, p
 
 ├─ app/                     # Client (ex: Next.js/TS) 
 │  ├─ package.json
+│  ├─ DeviceApp.md
+│  ├─ ScannerApp.md
+│  ├─ ServerApp.md
+│  ├─ BlockchainApp.md
 │  └─ src/
 
 ├─ scripts/
 │  ├─ devnet-init.sh
+│  ├─ Cryptography.sh
+│  ├─ DeviceApp.sh
+│  ├─ ScannerApp.sh
+│  ├─ ServerApp.sh
+│  ├─ BlockchainAppSol.sh
+│  ├─ BlockchainAppPol.sh
 │  └─ lint-all.sh
 
 ├─ .github/
