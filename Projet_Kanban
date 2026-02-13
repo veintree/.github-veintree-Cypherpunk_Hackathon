@@ -13,3 +13,17 @@ export PROJECT_NUMBER="1"         # numéro du Project (Settings -> Projects)
 
 # Lancer la création de toutes les issues
 ./scripts/create-issues.sh
+
+Title: [App] QR code scanning (camera + local decode)
+Labels: must-have, app, security
+Acceptance:
+
+Camera permission flow
+
+Local decode (@zxing/browser)
+
+Validation payload (schema + TTL)
+
+UI states (idle/scanning/success/error)
+
+Unit test for payload validator
